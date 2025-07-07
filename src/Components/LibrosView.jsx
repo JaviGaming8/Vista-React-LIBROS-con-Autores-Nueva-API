@@ -3,7 +3,7 @@ import axios from 'axios';
 import { validarLibro } from '../validaciones';
 import '../Libros.css';
 
-const API_BASE = 'https://microserviciosnet9-corelibro.onrender.com/api/LibroMaterial';
+const API_BASE = 'https://microserviciolibro.somee.com/api/LibroMaterial';
 
 const App = () => {
   const [libros, setLibros] = useState([]);
