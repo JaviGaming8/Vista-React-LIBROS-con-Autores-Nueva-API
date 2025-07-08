@@ -66,13 +66,11 @@ function Login({ onLogin }) {
             title={mostrarContraseña ? "Ocultar contraseña" : "Mostrar contraseña"}
           >
             {mostrarContraseña ? (
-              // Icono ojo abierto SVG
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6z"/>
                 <circle cx="12" cy="12" r="2.5"/>
               </svg>
             ) : (
-              // Icono ojo cerrado SVG
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <path d="M2 3l19 19-1.5 1.5L16.7 18c-1.3.5-2.7.7-4.7.7-7 0-10-7-10-7 1.1-2.5 3.2-4.5 5.9-5.4l-1.6-1.6L2 3zm7.5 5.3L8.8 8.8a3 3 0 0 1 4.3 4.3l-1.5-1.5a1.5 1.5 0 0 0-1.1-2.3zM12 5c7 0 10 7 10 7-1.1 2.5-3.2 4.5-5.9 5.4l-1.6-1.6c1-0.2 1.8-0.7 2.4-1.5l-2.8-2.8a3 3 0 0 0-4.2-4.2l-1.8-1.8c.9-.5 1.9-.8 3-.8z"/>
               </svg>
