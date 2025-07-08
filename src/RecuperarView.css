@@ -1,0 +1,344 @@
+/* Estilos para el componente Recuperar */
+.recuperar-container {
+  max-width: 420px;
+  margin: 3rem auto;
+  padding: 2.5rem;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative;
+  overflow: hidden;
+  animation: fadeInScale 0.6s ease-out;
+  min-height: 300px;
+}
+
+/* Efecto de fondo degradado distintivo */
+.recuperar-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #ff6b6b 0%, #feca57 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+/* Título */
+.recuperar-container h2 {
+  text-align: center;
+  color: #1a202c;
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 2.5rem;
+  letter-spacing: -0.025em;
+  background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Contenedor de formulario con transición */
+.recuperar-form-container {
+  position: relative;
+  min-height: 200px;
+  transition: all 0.4s ease-in-out;
+}
+
+/* Estilos para los inputs */
+.recuperar-container input {
+  width: 100%;
+  padding: 1.125rem 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #ffffff;
+  color: #2d3748;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 1.5rem;
+}
+
+.recuperar-container input:focus {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.1);
+  transform: translateY(-1px);
+  background: #fefefe;
+}
+
+.recuperar-container input::placeholder {
+  color: #a0aec0;
+  font-weight: 400;
+  transition: color 0.3s ease;
+}
+
+.recuperar-container input:focus::placeholder {
+  color: #cbd5e0;
+}
+
+/* Botones principales */
+.recuperar-container button {
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.3);
+  box-sizing: border-box;
+}
+
+.recuperar-container button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+}
+
+.recuperar-container button:active {
+  transform: translateY(0);
+}
+
+/* Estilo para la pregunta mostrada */
+.recuperar-pregunta {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid #dee2e6;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  animation: slideInQuestion 0.5s ease-out;
+}
+
+.recuperar-pregunta::before {
+  content: '?';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.recuperar-pregunta strong {
+  color: #495057;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.recuperar-pregunta p {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-top: 0.5rem;
+}
+
+/* Animaciones */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideInQuestion {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Animación para el cambio de estado */
+.recuperar-fase-inicial {
+  animation: slideInLeft 0.4s ease-out;
+}
+
+.recuperar-fase-pregunta {
+  animation: slideInRight 0.4s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Estados de validación */
+.recuperar-container input:valid {
+  border-color: #48bb78;
+}
+
+.recuperar-container input:invalid:not(:focus):not(:placeholder-shown) {
+  border-color: #f56565;
+  box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.1);
+}
+
+/* Indicadores visuales de validación */
+.recuperar-container input:required:valid:not(:focus):not(:placeholder-shown) {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='%2348bb78' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke='%23fff' stroke-width='1.5' d='M4 6l1.5 1.5L8 5'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1rem;
+  padding-right: 3rem;
+}
+
+.recuperar-container input:required:invalid:not(:focus):not(:placeholder-shown) {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='%23f56565' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke='%23fff' stroke-width='1.5' d='M5.5 5.5L6.5 6.5M6.5 5.5L5.5 6.5'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1rem;
+  padding-right: 3rem;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .recuperar-container {
+    margin: 1.5rem;
+    padding: 2rem;
+    max-width: none;
+  }
+  
+  .recuperar-container h2 {
+    font-size: 1.625rem;
+    margin-bottom: 2rem;
+  }
+  
+  .recuperar-container input,
+  .recuperar-container button {
+    font-size: 0.95rem;
+    padding: 1rem;
+  }
+  
+  .recuperar-pregunta {
+    padding: 1.25rem;
+  }
+}
+
+/* Hover effects mejorados */
+.recuperar-container input:hover:not(:focus) {
+  border-color: #cbd5e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Estilo para pantallas grandes */
+@media (min-width: 768px) {
+  .recuperar-container {
+    margin-top: 4rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Efecto hover para el contenedor */
+.recuperar-container:hover {
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Efecto de pulsación para el botón */
+.recuperar-container button:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+/* Estados de foco mejorados */
+.recuperar-container input:focus {
+  background: linear-gradient(135deg, #ffffff 0%, #fefefe 100%);
+}
+
+/* Animación de entrada para elementos dinámicos */
+.recuperar-container > *:not(h2) {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mejora del contraste en modo oscuro */
+@media (prefers-color-scheme: dark) {
+  .recuperar-container {
+    background: #2d3748;
+    border-color: #4a5568;
+  }
+  
+  .recuperar-container h2 {
+    color: #e2e8f0;
+  }
+  
+  .recuperar-container input {
+    background: #4a5568;
+    border-color: #718096;
+    color: #e2e8f0;
+  }
+  
+  .recuperar-container input::placeholder {
+    color: #a0aec0;
+  }
+  
+  .recuperar-pregunta {
+    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    border-color: #718096;
+  }
+  
+  .recuperar-pregunta strong {
+    color: #cbd5e0;
+  }
+  
+  .recuperar-pregunta p {
+    color: #e2e8f0;
+  }
+}

@@ -1,0 +1,192 @@
+/* Estilos para el componente Login */
+.login-container {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efecto de fondo sutil */
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+/* Título */
+.login-container h2 {
+  text-align: center;
+  color: #1a202c;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  letter-spacing: -0.025em;
+  position: relative;
+}
+
+/* Formulario */
+.login-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Estilos para los inputs */
+.login-container input {
+  padding: 1rem 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: #ffffff;
+  color: #2d3748;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.login-container input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+.login-container input::placeholder {
+  color: #a0aec0;
+  font-weight: 400;
+}
+
+/* Botón principal */
+.login-container button[type="submit"] {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.login-container button[type="submit"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.login-container button[type="submit"]:active {
+  transform: translateY(0);
+}
+
+/* Botones secundarios */
+.login-container button.secondary {
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #e2e8f0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.login-container button.secondary:hover {
+  background: #f7fafc;
+  border-color: #667eea;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.login-container button.secondary:active {
+  transform: translateY(0);
+}
+
+/* Última opción sin margen inferior */
+.login-container button.secondary:last-child {
+  margin-bottom: 0;
+}
+
+/* Animación de carga para el formulario */
+.login-container form {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .login-container {
+    margin: 1rem;
+    padding: 1.5rem;
+    max-width: none;
+  }
+  
+  .login-container h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .login-container input,
+  .login-container button {
+    font-size: 0.95rem;
+  }
+}
+
+/* Estados de validación */
+.login-container input:invalid {
+  border-color: #fed7d7;
+}
+
+.login-container input:valid {
+  border-color: #c6f6d5;
+}
+
+/* Efecto de enfoque mejorado */
+.login-container input:focus:valid {
+  border-color: #68d391;
+  box-shadow: 0 0 0 3px rgba(104, 211, 145, 0.1);
+}
+
+/* Estilo adicional para pantallas grandes */
+@media (min-width: 768px) {
+  .login-container {
+    margin-top: 5vh;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Efecto hover para el contenedor */
+.login-container:hover {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.3s ease;
+}
