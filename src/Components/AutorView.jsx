@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../Autor.css';
 
-const API_BASE = 'https://microserviciosnet9-coreautor.onrender.com/api/Autor';
+const API_BASE = 'https://microserviciolibroautor.onrender.com/api/Autor';
 
 const AutorView = () => {
   const [autores, setAutores] = useState([]);
