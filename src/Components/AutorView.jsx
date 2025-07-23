@@ -18,7 +18,7 @@ const AutorView = () => {
 
   const navigate = useNavigate();
 
-  // Función para obtener el token y armar la configuración del header
+  // Función para obtener token y armar config headers
   const getTokenConfig = () => {
     const token = localStorage.getItem('token');
     return {
@@ -28,7 +28,19 @@ const AutorView = () => {
     };
   };
 
-  // Memoizamos la función para evitar que cambie en cada render y usarla en useEffect
+  // Memoizamos manejarError para usarlo en useCallback y evitar warnings
+  const manejarError = useCallback((error) => {
+    if (error.response?.status === 401) {
+      alert('Sesión expirada. Por favor inicia sesión de nuevo.');
+      localStorage.removeItem('token');
+      navigate('/login');
+    } else {
+      console.error(error);
+      setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
+    }
+  }, [navigate]);
+
+  // Memoizamos obtenerAutores con dependencia manejarError
   const obtenerAutores = useCallback(async () => {
     setCargando(true);
     try {
@@ -40,22 +52,11 @@ const AutorView = () => {
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [manejarError]);
 
   useEffect(() => {
     obtenerAutores();
   }, [obtenerAutores]);
-
-  const manejarError = (error) => {
-    if (error.response?.status === 401) {
-      alert('Sesión expirada. Por favor inicia sesión de nuevo.');
-      localStorage.removeItem('token');
-      navigate('/login');
-    } else {
-      console.error(error);
-      setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
-    }
-  };
 
   const crearAutor = async () => {
     setCargando(true);
