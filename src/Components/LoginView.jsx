@@ -19,7 +19,10 @@ function Login({ onLogin }) {
 
       alert(res.data.message);
 
+      // Guardar usuario y token en localStorage
       localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
+      localStorage.setItem('token', res.data.token);  // <-- Guarda el token aquí
+
       onLogin(true);
       navigate('/');
 

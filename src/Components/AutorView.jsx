@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../Autor.css';
+import { useNavigate } from 'react-router-dom';
 
 const API_BASE = 'https://microserviciolibroautor.onrender.com/api/Autor';
 
@@ -15,17 +16,41 @@ const AutorView = () => {
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
+  const navigate = useNavigate();
+
+  // Función para obtener el token y armar la configuración del header
+  const getTokenConfig = () => {
+    const token = localStorage.getItem('token');
+    return {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : ''
+      }
+    };
+  };
+
   useEffect(() => {
     obtenerAutores();
   }, []);
 
+  const manejarError = (error) => {
+    if (error.response?.status === 401) {
+      alert('Sesión expirada. Por favor inicia sesión de nuevo.');
+      localStorage.removeItem('token');
+      navigate('/login');
+    } else {
+      console.error(error);
+      setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
+    }
+  };
+
   const obtenerAutores = async () => {
     setCargando(true);
     try {
-      const res = await axios.get(API_BASE);
+      const res = await axios.get(API_BASE, getTokenConfig());
       setAutores(res.data);
+      setMensaje({ texto: '', tipo: '' });
     } catch (err) {
-      setMensaje({ texto: 'Error al obtener autores', tipo: 'error' });
+      manejarError(err);
     } finally {
       setCargando(false);
     }
@@ -34,13 +59,13 @@ const AutorView = () => {
   const crearAutor = async () => {
     setCargando(true);
     try {
-      await axios.post(API_BASE, form);
+      await axios.post(API_BASE, form, getTokenConfig());
       setMensaje({ texto: 'Autor creado correctamente', tipo: 'exito' });
       setForm({ nombre: '', apellido: '', fechaNacimiento: '' });
       setMostrarFormulario(false);
       obtenerAutores();
     } catch (err) {
-      setMensaje({ texto: 'Error al crear autor', tipo: 'error' });
+      manejarError(err);
     } finally {
       setCargando(false);
     }
@@ -53,12 +78,16 @@ const AutorView = () => {
     }
     setCargando(true);
     try {
-      const res = await axios.get(`${API_BASE}/${idBusqueda}`);
+      const res = await axios.get(`${API_BASE}/${idBusqueda}`, getTokenConfig());
       setAutorBuscado(res.data);
       setMensaje({ texto: '', tipo: '' });
-    } catch {
-      setAutorBuscado(null);
-      setMensaje({ texto: 'Autor no encontrado', tipo: 'error' });
+    } catch (error) {
+      if (error.response?.status === 401) {
+        manejarError(error);
+      } else {
+        setAutorBuscado(null);
+        setMensaje({ texto: 'Autor no encontrado', tipo: 'error' });
+      }
     } finally {
       setCargando(false);
     }
@@ -71,10 +100,11 @@ const AutorView = () => {
     }
     setCargando(true);
     try {
-      const res = await axios.get(`${API_BASE}/Nombre?nombre=${nombreBusqueda}`);
+      const res = await axios.get(`${API_BASE}/Nombre?nombre=${nombreBusqueda}`, getTokenConfig());
       setAutoresPorNombre(res.data);
-    } catch {
-      setMensaje({ texto: 'Error al buscar por nombre', tipo: 'error' });
+      setMensaje({ texto: '', tipo: '' });
+    } catch (error) {
+      manejarError(error);
     } finally {
       setCargando(false);
     }

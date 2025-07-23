@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { validarLibro } from '../validaciones';
 import '../Libros.css';
+import { useNavigate } from 'react-router-dom';
 
 const API_BASE = 'https://microserviciolibro.somee.com/api/LibroMaterial';
-
 
 const App = () => {
   const [libros, setLibros] = useState([]);
@@ -18,6 +18,20 @@ const App = () => {
   const [idBusqueda, setIdBusqueda] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [idEditar, setIdEditar] = useState(null);
+
+  const navigate = useNavigate();
+
+  // Función para obtener el token desde localStorage
+  const getTokenConfig = () => {
+    const token = localStorage.getItem('token');
+    return {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : ''
+      }
+    };
+  };
 
   useEffect(() => {
     fetchLibros();
@@ -26,20 +40,43 @@ const App = () => {
   const fetchLibros = async () => {
     setCargando(true);
     try {
-      const response = await axios.get(API_BASE);
+      const response = await axios.get(API_BASE, getTokenConfig());
       setLibros(response.data);
       setMensaje({ texto: '', tipo: '' });
     } catch (error) {
-      console.error('Error al obtener libros:', error);
-      setMensaje({ texto: 'Error al cargar los libros. Intente nuevamente.', tipo: 'error' });
+      manejarError(error);
     } finally {
       setCargando(false);
+    }
+  };
+
+  const manejarError = (error) => {
+    if (error.response?.status === 401) {
+      alert('Sesión expirada. Por favor inicia sesión de nuevo.');
+      localStorage.removeItem('token');
+      navigate('/login');
+    } else {
+      console.error(error);
+      setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Función para preparar el formulario para editar
+  const prepararEdicion = (libro) => {
+    setForm({
+      titulo: libro.titulo,
+      fechaPublicacion: new Date(libro.fechaPublicacion).toISOString().slice(0, 10),
+      autorLibro: libro.autorLibro
+    });
+    setModoEdicion(true);
+    setIdEditar(libro.libreriaMaterialId);
+    setMostrarFormulario(true);
+    setMensaje({ texto: '', tipo: '' });
   };
 
   const handleSubmit = async (e) => {
@@ -61,17 +98,24 @@ const App = () => {
         autorLibro: form.autorLibro
       };
 
-      await axios.post(API_BASE, nuevoLibro);
-      setMensaje({ texto: 'Libro registrado exitosamente', tipo: 'exito' });
+      if (modoEdicion) {
+        // Actualizar libro
+        await axios.put(`${API_BASE}/${idEditar}`, nuevoLibro, getTokenConfig());
+        setMensaje({ texto: 'Libro actualizado exitosamente', tipo: 'exito' });
+      } else {
+        // Crear nuevo libro
+        await axios.post(API_BASE, nuevoLibro, getTokenConfig());
+        setMensaje({ texto: 'Libro registrado exitosamente', tipo: 'exito' });
+      }
+
       setForm({ titulo: '', fechaPublicacion: '', autorLibro: '' });
       setMostrarFormulario(false);
+      setModoEdicion(false);
+      setIdEditar(null);
       await fetchLibros();
+
     } catch (error) {
-      console.error('Error al registrar el libro:', error);
-      setMensaje({
-        texto: error.response?.data?.message || 'Error al registrar el libro',
-        tipo: 'error'
-      });
+      manejarError(error);
     } finally {
       setCargando(false);
     }
@@ -85,18 +129,38 @@ const App = () => {
 
     setCargando(true);
     try {
-      const response = await axios.get(`${API_BASE}/${idBusqueda}`);
+      const response = await axios.get(`${API_BASE}/${idBusqueda}`, getTokenConfig());
       setLibroBuscado(response.data);
       setMensaje({ texto: '', tipo: '' });
     } catch (error) {
-      console.error('Error al buscar libro por ID:', error);
+      if (error.response?.status === 404) {
+        setMensaje({ texto: 'Libro no encontrado', tipo: 'error' });
+      } else {
+        manejarError(error);
+      }
       setLibroBuscado(null);
-      setMensaje({
-        texto: error.response?.status === 404
-          ? 'Libro no encontrado'
-          : 'Error en la búsqueda',
-        tipo: 'error'
-      });
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // Función para eliminar un libro
+  const eliminarLibro = async (id) => {
+    if (!window.confirm('¿Estás seguro de eliminar este libro?')) return;
+
+    setCargando(true);
+    try {
+      await axios.delete(`${API_BASE}/${id}`, getTokenConfig());
+      setMensaje({ texto: 'Libro eliminado correctamente', tipo: 'exito' });
+      // Si estabas editando ese libro, cancela edición
+      if (modoEdicion && id === idEditar) {
+        setModoEdicion(false);
+        setMostrarFormulario(false);
+        setForm({ titulo: '', fechaPublicacion: '', autorLibro: '' });
+      }
+      await fetchLibros();
+    } catch (error) {
+      manejarError(error);
     } finally {
       setCargando(false);
     }
@@ -124,10 +188,18 @@ const App = () => {
             <h2 className="panel-title">Acciones</h2>
             <div className="action-buttons">
               <button
-                onClick={() => setMostrarFormulario(!mostrarFormulario)}
+                onClick={() => {
+                  setMostrarFormulario(!mostrarFormulario);
+                  if (mostrarFormulario) {
+                    setModoEdicion(false);
+                    setForm({ titulo: '', fechaPublicacion: '', autorLibro: '' });
+                    setIdEditar(null);
+                    setMensaje({ texto: '', tipo: '' });
+                  }
+                }}
                 className="btn btn-primary"
               >
-                {mostrarFormulario ? 'Cancelar' : 'Nuevo Libro'}
+                {mostrarFormulario ? 'Cancelar' : modoEdicion ? 'Editar Libro' : 'Nuevo Libro'}
               </button>
               <button
                 onClick={fetchLibros}
@@ -141,7 +213,7 @@ const App = () => {
             {/* Formulario (condicional) */}
             {mostrarFormulario && (
               <div className="form-container">
-                <h3>Registrar Nuevo Libro</h3>
+                <h3>{modoEdicion ? 'Editar Libro' : 'Registrar Nuevo Libro'}</h3>
                 <form onSubmit={handleSubmit} className="libro-form">
                   <div className="form-group">
                     <label>Título del Libro</label>
@@ -186,7 +258,7 @@ const App = () => {
                     className="btn btn-primary btn-block"
                     disabled={cargando}
                   >
-                    {cargando ? 'Guardando...' : 'Guardar Libro'}
+                    {cargando ? (modoEdicion ? 'Actualizando...' : 'Guardando...') : (modoEdicion ? 'Actualizar Libro' : 'Guardar Libro')}
                   </button>
                 </form>
               </div>
@@ -278,7 +350,18 @@ const App = () => {
                       </div>
                     </div>
                     <div className="libro-actions">
-                      <button className="btn btn-sm btn-outline">Detalles</button>
+                      <button
+                        className="btn btn-sm btn-outline"
+                        onClick={() => prepararEdicion(libro)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => eliminarLibro(libro.libreriaMaterialId)}
+                      >
+                        Eliminar
+                      </button>
                     </div>
                   </div>
                 ))}
