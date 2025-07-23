@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import '../Autor.css';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +28,20 @@ const AutorView = () => {
     };
   };
 
+  // Memoizamos la función para evitar que cambie en cada render y usarla en useEffect
+  const obtenerAutores = useCallback(async () => {
+    setCargando(true);
+    try {
+      const res = await axios.get(API_BASE, getTokenConfig());
+      setAutores(res.data);
+      setMensaje({ texto: '', tipo: '' });
+    } catch (err) {
+      manejarError(err);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
   useEffect(() => {
     obtenerAutores();
   }, [obtenerAutores]);
@@ -40,19 +54,6 @@ const AutorView = () => {
     } else {
       console.error(error);
       setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
-    }
-  };
-
-  const obtenerAutores = async () => {
-    setCargando(true);
-    try {
-      const res = await axios.get(API_BASE, getTokenConfig());
-      setAutores(res.data);
-      setMensaje({ texto: '', tipo: '' });
-    } catch (err) {
-      manejarError(err);
-    } finally {
-      setCargando(false);
     }
   };
 
