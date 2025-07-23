@@ -42,7 +42,7 @@ export function validarRespuesta(respuesta) {
     return 'La respuesta es obligatoria';
   }
   if (respuesta.trim().length < 3) {
-    return 'La respuesta debe tener al menos 3 caracteres';
+    return 'La respuesta debe tener al menos de 3 caracteres';
   }
   return null;
 }
