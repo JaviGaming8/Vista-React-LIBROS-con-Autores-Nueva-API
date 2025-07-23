@@ -30,7 +30,7 @@ const AutorView = () => {
 
   useEffect(() => {
     obtenerAutores();
-  }, []);
+  }, [obtenerAutores]);
 
   const manejarError = (error) => {
     if (error.response?.status === 401) {
