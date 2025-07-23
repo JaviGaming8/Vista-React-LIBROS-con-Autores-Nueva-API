@@ -33,33 +33,30 @@ const App = () => {
     };
   };
 
-  const fetchLibros = useCallback(async () => {
-    setCargando(true);
-    try {
-      const response = await axios.get(API_BASE, getTokenConfig());
-      setLibros(response.data);
-      setMensaje({ texto: '', tipo: '' });
-    } catch (error) {
-      manejarError(error);
-    } finally {
-      setCargando(false);
-    }
-  }, []);
+const manejarError = useCallback((error) => {
+  if (error.response?.status === 401) {
+    alert('Sesión expirada. Por favor inicia sesión de nuevo.');
+    localStorage.removeItem('token');
+    navigate('/login');
+  } else {
+    console.error(error);
+    setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
+  }
+}, [navigate]);
 
-  useEffect(() => {
-    fetchLibros();
-  }, [fetchLibros]);
+const fetchLibros = useCallback(async () => {
+  setCargando(true);
+  try {
+    const response = await axios.get(API_BASE, getTokenConfig());
+    setLibros(response.data);
+    setMensaje({ texto: '', tipo: '' });
+  } catch (error) {
+    manejarError(error);
+  } finally {
+    setCargando(false);
+  }
+}, [manejarError]);
 
-  const manejarError = (error) => {
-    if (error.response?.status === 401) {
-      alert('Sesión expirada. Por favor inicia sesión de nuevo.');
-      localStorage.removeItem('token');
-      navigate('/login');
-    } else {
-      console.error(error);
-      setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
