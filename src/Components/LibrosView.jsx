@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { validarLibro } from '../validaciones';
 import '../Libros.css';
@@ -46,7 +46,7 @@ const App = () => {
     }
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     fetchLibros();
   }, [fetchLibros]);
 
@@ -66,7 +66,6 @@ const App = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  // Función para preparar el formulario para editar
   const prepararEdicion = (libro) => {
     setForm({
       titulo: libro.titulo,
@@ -99,11 +98,9 @@ const App = () => {
       };
 
       if (modoEdicion) {
-        // Actualizar libro
         await axios.put(`${API_BASE}/${idEditar}`, nuevoLibro, getTokenConfig());
         setMensaje({ texto: 'Libro actualizado exitosamente', tipo: 'exito' });
       } else {
-        // Crear nuevo libro
         await axios.post(API_BASE, nuevoLibro, getTokenConfig());
         setMensaje({ texto: 'Libro registrado exitosamente', tipo: 'exito' });
       }
@@ -144,7 +141,6 @@ const App = () => {
     }
   };
 
-  // Función para eliminar un libro
   const eliminarLibro = async (id) => {
     if (!window.confirm('¿Estás seguro de eliminar este libro?')) return;
 
@@ -152,7 +148,6 @@ const App = () => {
     try {
       await axios.delete(`${API_BASE}/${id}`, getTokenConfig());
       setMensaje({ texto: 'Libro eliminado correctamente', tipo: 'exito' });
-      // Si estabas editando ese libro, cancela edición
       if (modoEdicion && id === idEditar) {
         setModoEdicion(false);
         setMostrarFormulario(false);
@@ -183,7 +178,6 @@ const App = () => {
         )}
 
         <div className="app-grid">
-          {/* Panel de acciones */}
           <section className="app-panel">
             <h2 className="panel-title">Acciones</h2>
             <div className="action-buttons">
@@ -210,7 +204,6 @@ const App = () => {
               </button>
             </div>
 
-            {/* Formulario (condicional) */}
             {mostrarFormulario && (
               <div className="form-container">
                 <h3>{modoEdicion ? 'Editar Libro' : 'Registrar Nuevo Libro'}</h3>
@@ -264,7 +257,6 @@ const App = () => {
               </div>
             )}
 
-            {/* Búsqueda */}
             <div className="search-container">
               <h3>Búsqueda Avanzada</h3>
               <div className="search-group">
@@ -310,7 +302,6 @@ const App = () => {
             </div>
           </section>
 
-          {/* Listado de libros */}
           <section className="libros-container">
             <div className="libros-header">
               <h2>Catálogo de Libros</h2>
