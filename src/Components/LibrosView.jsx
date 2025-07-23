@@ -33,11 +33,7 @@ const App = () => {
     };
   };
 
-  useEffect(() => {
-    fetchLibros();
-  }, []);
-
-  const fetchLibros = async () => {
+  const fetchLibros = useCallback(async () => {
     setCargando(true);
     try {
       const response = await axios.get(API_BASE, getTokenConfig());
@@ -48,7 +44,11 @@ const App = () => {
     } finally {
       setCargando(false);
     }
-  };
+  }, []);
+
+    useEffect(() => {
+    fetchLibros();
+  }, [fetchLibros]);
 
   const manejarError = (error) => {
     if (error.response?.status === 401) {
