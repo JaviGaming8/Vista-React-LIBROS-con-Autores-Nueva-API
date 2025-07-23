@@ -3,7 +3,7 @@ import axios from 'axios';
 import '../Autor.css';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = 'https://microserviciolibroautor.onrender.com/api/Autor';
+const API_BASE = 'https://microserviciodeautores.somee.com/api/Autor';
 
 const AutorView = () => {
   const [autores, setAutores] = useState([]);
