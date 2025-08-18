@@ -12,6 +12,10 @@ import AutorView from './Components/AutorView';
 import Login from './Components/LoginView';
 import Recuperar from './Components/RecuperarView';
 import Registrar from './Components/RegistrarView';
+import CarritoView from './Components/CarritoView';
+import HistorialView from './Components/HistorialView';
+
+
 import './App.css';
 
 function App() {
@@ -32,7 +36,12 @@ function App() {
           <Route path="/registrar" element={<Registrar onLogin={setIsAuthenticated} />} />
           <Route path="/login" element={<Login onLogin={setIsAuthenticated} />} />
           <Route path="*" element={<Navigate to="/login" />} />
+          <Route path="/historial" element={<HistorialView />} />
+          <Route path="/carrito" element={<CarritoView />} />
+
         </Routes>
+
+        
       ) : (
         <div className="layout">
           <aside className="sidebar">
@@ -50,6 +59,20 @@ function App() {
               >
                 👨‍🏫 Autores
               </NavLink>
+              <NavLink
+                to="/carrito"
+                className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+              >
+                🛒 Carrito
+              </NavLink>
+
+              <NavLink
+                to="/historial"
+                className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+              >
+                📜 Historial
+              </NavLink>
+              
               <button
                 onClick={() => {
                   localStorage.removeItem('usuario');
@@ -67,6 +90,8 @@ function App() {
               <Route path="/" element={<Navigate to="/libros" />} />
               <Route path="/libros" element={<LibrosView />} />
               <Route path="/autores" element={<AutorView />} />
+              <Route path="/carrito" element={<CarritoView />} />
+              <Route path="/historial" element={<HistorialView />} />
               <Route path="*" element={<Navigate to="/libros" />} />
             </Routes>
           </main>

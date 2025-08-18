@@ -1,0 +1,79 @@
+.carrito-container {
+  padding: 20px;
+}
+
+.carrito-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.carrito-actions-top .btn { margin-left: 8px; }
+
+.tabla-wrapper {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.tabla-carrito {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-carrito th, .tabla-carrito td {
+  border-bottom: 1px solid #eaeaea;
+  padding: 10px;
+  text-align: left;
+}
+
+.celda-libro .titulo {
+  font-weight: 600;
+}
+.celda-libro .sub-id,
+.celda-autor .sub-guid {
+  font-size: 12px;
+  color: #666;
+  word-break: break-all;
+}
+
+.qty-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.qty-input {
+  width: 64px;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.carrito-actions-bottom {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #ddd;
+  border-top-color: #555;
+  animation: spin 0.9s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.app-mensaje {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+.app-mensaje.exito { background: #e6ffed; color: #135d2e; }
+.app-mensaje.error { background: #ffeaea; color: #7d1a1a; }

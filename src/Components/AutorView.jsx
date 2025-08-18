@@ -3,7 +3,7 @@ import axios from 'axios';
 import '../Autor.css';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = 'https://microserviciodeautores.somee.com/api/Autor';
+const API_BASE = 'https://microservicioautoresapi.somee.com/api/Autor';
 
 const AutorView = () => {
   const [autores, setAutores] = useState([]);
@@ -18,35 +18,40 @@ const AutorView = () => {
 
   const navigate = useNavigate();
 
-  // Función para obtener token y armar config headers
+  // Config común (token + JSON)
   const getTokenConfig = () => {
     const token = localStorage.getItem('token');
     return {
       headers: {
-        Authorization: token ? `Bearer ${token}` : ''
+        Authorization: token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json'
       }
     };
   };
 
-  // Memoizamos manejarError para usarlo en useCallback y evitar warnings
+  const limpiarMensaje = () => setMensaje({ texto: '', tipo: '' });
+
   const manejarError = useCallback((error) => {
-    if (error.response?.status === 401) {
+    if (error?.response?.status === 401) {
       alert('Sesión expirada. Por favor inicia sesión de nuevo.');
       localStorage.removeItem('token');
       navigate('/login');
-    } else {
-      console.error(error);
-      setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
+      return;
     }
+    if (error?.response?.status === 404) {
+      setMensaje({ texto: 'No se encontraron resultados.', tipo: 'advertencia' });
+      return;
+    }
+    console.error(error);
+    setMensaje({ texto: 'Error en la operación. Intente nuevamente.', tipo: 'error' });
   }, [navigate]);
 
-  // Memoizamos obtenerAutores con dependencia manejarError
   const obtenerAutores = useCallback(async () => {
     setCargando(true);
     try {
       const res = await axios.get(API_BASE, getTokenConfig());
-      setAutores(res.data);
-      setMensaje({ texto: '', tipo: '' });
+      setAutores(Array.isArray(res.data) ? res.data : []);
+      limpiarMensaje();
     } catch (err) {
       manejarError(err);
     } finally {
@@ -59,13 +64,27 @@ const AutorView = () => {
   }, [obtenerAutores]);
 
   const crearAutor = async () => {
+    // Validación mínima
+    if (!form.nombre.trim() || !form.apellido.trim() || !form.fechaNacimiento) {
+      setMensaje({ texto: 'Completa nombre, apellido y fecha.', tipo: 'advertencia' });
+      return;
+    }
+
+    // Normalizar fecha (a medianoche local -> ISO)
+    const fechaIso = new Date(form.fechaNacimiento + 'T00:00:00').toISOString();
+
     setCargando(true);
     try {
-      await axios.post(API_BASE, form, getTokenConfig());
+      await axios.post(API_BASE, {
+        nombre: form.nombre.trim(),
+        apellido: form.apellido.trim(),
+        fechaNacimiento: fechaIso
+      }, getTokenConfig());
+
       setMensaje({ texto: 'Autor creado correctamente', tipo: 'exito' });
       setForm({ nombre: '', apellido: '', fechaNacimiento: '' });
       setMostrarFormulario(false);
-      obtenerAutores();
+      await obtenerAutores();
     } catch (err) {
       manejarError(err);
     } finally {
@@ -80,32 +99,36 @@ const AutorView = () => {
     }
     setCargando(true);
     try {
-      const res = await axios.get(`${API_BASE}/${idBusqueda}`, getTokenConfig());
-      setAutorBuscado(res.data);
-      setMensaje({ texto: '', tipo: '' });
+      const res = await axios.get(`${API_BASE}/${idBusqueda.trim()}`, getTokenConfig());
+      setAutorBuscado(res.data || null);
+      limpiarMensaje();
     } catch (error) {
-      if (error.response?.status === 401) {
-        manejarError(error);
-      } else {
-        setAutorBuscado(null);
-        setMensaje({ texto: 'Autor no encontrado', tipo: 'error' });
-      }
+      setAutorBuscado(null);
+      manejarError(error);
     } finally {
       setCargando(false);
     }
   };
 
   const buscarPorNombre = async () => {
-    if (!nombreBusqueda.trim()) {
+    const query = nombreBusqueda.trim();
+    if (!query) {
+      setAutoresPorNombre([]);
       setMensaje({ texto: 'Ingrese un nombre', tipo: 'advertencia' });
       return;
     }
     setCargando(true);
     try {
-      const res = await axios.get(`${API_BASE}/Nombre?nombre=${nombreBusqueda}`, getTokenConfig());
-      setAutoresPorNombre(res.data);
-      setMensaje({ texto: '', tipo: '' });
+      const res = await axios.get(`${API_BASE}/Nombre?nombre=${encodeURIComponent(query)}`, getTokenConfig());
+      const arr = Array.isArray(res.data) ? res.data : [];
+      setAutoresPorNombre(arr);
+      if (arr.length === 0) {
+        setMensaje({ texto: 'Sin coincidencias para ese nombre.', tipo: 'advertencia' });
+      } else {
+        limpiarMensaje();
+      }
     } catch (error) {
+      setAutoresPorNombre([]);
       manejarError(error);
     } finally {
       setCargando(false);
@@ -133,7 +156,11 @@ const AutorView = () => {
           <section className="app-panel">
             <h2 className="panel-title">Acciones</h2>
             <div className="action-buttons">
-              <button onClick={() => setMostrarFormulario(!mostrarFormulario)} className="btn btn-primary">
+              <button
+                onClick={() => setMostrarFormulario(!mostrarFormulario)}
+                className="btn btn-primary"
+                disabled={cargando}
+              >
                 {mostrarFormulario ? 'Cancelar' : 'Nuevo Autor'}
               </button>
               <button onClick={obtenerAutores} className="btn btn-secondary" disabled={cargando}>
@@ -188,19 +215,20 @@ const AutorView = () => {
               <div className="search-group">
                 <input
                   type="text"
-                  placeholder="Buscar por ID"
+                  placeholder="Buscar por ID (numérico)"
                   value={idBusqueda}
                   onChange={e => setIdBusqueda(e.target.value)}
                   className="form-input"
                 />
                 <button onClick={buscarPorId} className="btn btn-secondary btn-block" disabled={cargando}>
-                  Buscar por ID
+                  {cargando ? 'Buscando...' : 'Buscar por ID'}
                 </button>
               </div>
 
               {autorBuscado && (
                 <div className="search-results">
                   <h4>Resultado</h4>
+                  <p><strong>ID:</strong> {autorBuscado.autorLibroId}</p>
                   <p><strong>Nombre:</strong> {autorBuscado.nombre} {autorBuscado.apellido}</p>
                   <p><strong>Fecha de Nacimiento:</strong> {new Date(autorBuscado.fechaNacimiento).toLocaleDateString()}</p>
                   <p><strong>GUID:</strong> {autorBuscado.autorLibroGuid}</p>
@@ -216,15 +244,15 @@ const AutorView = () => {
                   className="form-input"
                 />
                 <button onClick={buscarPorNombre} className="btn btn-secondary btn-block" disabled={cargando}>
-                  Buscar por Nombre
+                  {cargando ? 'Buscando...' : 'Buscar por Nombre'}
                 </button>
               </div>
 
               {autoresPorNombre.length > 0 && (
                 <ul className="result-list">
                   {autoresPorNombre.map(a => (
-                    <li key={a.autorLibroGuid}>
-                      {a.nombre} {a.apellido} - {new Date(a.fechaNacimiento).toLocaleDateString()}
+                    <li key={a.autorLibroId ?? a.autorLibroGuid}>
+                      {a.nombre} {a.apellido} — {new Date(a.fechaNacimiento).toLocaleDateString()}
                     </li>
                   ))}
                 </ul>
@@ -250,13 +278,14 @@ const AutorView = () => {
             ) : (
               <div className="libros-grid">
                 {autores.map(autor => (
-                  <div key={autor.autorLibroGuid} className="libro-card">
+                  <div key={autor.autorLibroId ?? autor.autorLibroGuid} className="libro-card">
                     <div className="libro-header">
                       <h3>{autor.nombre} {autor.apellido}</h3>
                       <span className="libro-id">#{autor.autorLibroGuid}</span>
                     </div>
                     <div className="libro-body">
-                      <span><strong>Nacimiento:</strong> {new Date(autor.fechaNacimiento).toLocaleDateString()}</span>
+                      <span><strong>ID:</strong> {autor.autorLibroId}</span>
+                      <span style={{ marginLeft: 12 }}><strong>Nacimiento:</strong> {new Date(autor.fechaNacimiento).toLocaleDateString()}</span>
                     </div>
                   </div>
                 ))}
