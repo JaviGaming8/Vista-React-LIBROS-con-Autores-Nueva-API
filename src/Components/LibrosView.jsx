@@ -4,7 +4,7 @@ import { validarLibro } from '../validaciones';
 import '../Libros.css';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE  = 'https://microserviciolibros.somee.com/api/LibroMaterial';
+const API_BASE = 'https://microserviciolibros.somee.com/api/LibroMaterial';
 const API_AUTOR = 'https://microservicioautoresapi.somee.com/api/Autor';
 const API_CARRITO = 'https://localhost:7277/api/Carrito';
 
@@ -28,13 +28,39 @@ const App = () => {
   // Modal compra/carrito
   const [modalAbierto, setModalAbierto] = useState(false);
   const [libroSeleccionado, setLibroSeleccionado] = useState(null);
-  const [autorSeleccionado, setAutorSeleccionado] = useState(null); // { autorLibroId, autorLibroGuid, ... }
+  const [autorSeleccionado, setAutorSeleccionado] = useState(null);
   const [cantCompra, setCantCompra] = useState(1);
   const [cargandoAutor, setCargandoAutor] = useState(false);
 
+  const [modalDatosAbierto, setModalDatosAbierto] = useState(false);
+  const [datosCompra, setDatosCompra] = useState({
+    nombreCompleto: '',
+    email: '',
+    direccion: '',
+    curp: '',
+    rfc: '',
+    tipoIdentificacion: 'curp'
+  });
+
   const navigate = useNavigate();
 
-  // Config headers (token + JSON)
+  // ✅ Manejador único para los inputs del modal de datos del cliente
+  const handleDatosChange = (e) => {
+    const { name: field, value } = e.target; // evita 'name' global
+    setDatosCompra((prev) => {
+      if (field === 'tipoIdentificacion') {
+        return {
+          ...prev,
+          tipoIdentificacion: value,
+          // resetea el campo que no aplica
+          curp: value === 'curp' ? prev.curp : '',
+          rfc: value === 'rfc' ? prev.rfc : ''
+        };
+      }
+      return { ...prev, [field]: value };
+    });
+  };
+
   const getTokenConfig = () => {
     const token = localStorage.getItem('token');
     return {
@@ -45,43 +71,30 @@ const App = () => {
     };
   };
 
-  // Util: DateTime local sin 'Z' (yyyy-MM-ddTHH:mm:ss)
   const nowLocalDateTime = () => {
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    const MM = pad(d.getMonth() + 1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const mm = pad(d.getMinutes());
-    const ss = pad(d.getSeconds());
-    return `${yyyy}-${MM}-${dd}T${hh}:${mm}:${ss}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   };
 
   const manejarError = useCallback((error) => {
     let detalle = 'Error en la operación. Intente nuevamente.';
     if (error?.response) {
       const { status, statusText, data } = error.response;
-      if (typeof data === 'string' && data.trim() !== '') {
-        detalle = `HTTP ${status} ${statusText || ''} — ${data}`;
-      } else if (data?.title) {
-        detalle = `${data.title}`;
+      if (typeof data === 'string' && data.trim() !== '') detalle = `HTTP ${status} ${statusText || ''} — ${data}`;
+      else if (data?.title) {
+        detalle = data.title;
         if (data?.errors) {
-          const flat = Object.entries(data.errors)
-            .map(([k, arr]) => `${k}: ${arr.join(', ')}`).join(' | ');
+          const flat = Object.entries(data.errors).map(([k, arr]) => `${k}: ${arr.join(', ')}`).join(' | ');
           if (flat) detalle += ` — ${flat}`;
         }
-      } else if (data && Object.keys(data).length > 0) {
-        detalle = `HTTP ${status} ${statusText || ''} — ${JSON.stringify(data)}`;
-      } else {
-        detalle = `HTTP ${status} ${statusText || ''}`;
-      }
+      } else if (data && Object.keys(data).length > 0) detalle = `HTTP ${status} ${statusText || ''} — ${JSON.stringify(data)}`;
+      else detalle = `HTTP ${status} ${statusText || ''}`;
     } else if (error?.code || error?.message) {
       detalle = `${error.code || 'ERR'}: ${error.message}`;
     }
     console.error('AXIOS ERROR:', error);
     setMensaje({ texto: detalle, tipo: 'error' });
-
     if (error?.response?.status === 401) {
       alert('Sesión expirada. Por favor inicia sesión de nuevo.');
       localStorage.removeItem('token');
@@ -97,15 +110,10 @@ const App = () => {
       setMensaje({ texto: '', tipo: '' });
     } catch (error) {
       manejarError(error);
-    } finally {
-      setCargando(false);
-    }
+    } finally { setCargando(false); }
   }, [manejarError]);
 
-  useEffect(() => {
-    fetchLibros();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { fetchLibros(); }, [fetchLibros]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -126,14 +134,11 @@ const App = () => {
     setMensaje({ texto: '', tipo: '' });
   };
 
-  const resetForm = () => {
-    setForm({ titulo: '', fechaPublicacion: '', autorLibro: '', precioUnitario: '', stock: '' });
-  };
+  const resetForm = () => setForm({ titulo: '', fechaPublicacion: '', autorLibro: '', precioUnitario: '', stock: '' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setCargando(true);
-
     const validacion = validarLibro ? validarLibro(form) : { esValido: true, errores: [] };
     if (!validacion.esValido) {
       setMensaje({ texto: validacion.errores.join(' | '), tipo: 'error' });
@@ -149,7 +154,6 @@ const App = () => {
         precioUnitario: Number(form.precioUnitario ?? 0),
         stock: Number(form.stock ?? 0)
       };
-
       if (modoEdicion) {
         await axios.put(`${API_BASE}/${idEditar}`, payload, getTokenConfig());
         setMensaje({ texto: 'Libro actualizado exitosamente', tipo: 'exito' });
@@ -157,87 +161,56 @@ const App = () => {
         await axios.post(API_BASE, payload, getTokenConfig());
         setMensaje({ texto: 'Libro registrado exitosamente', tipo: 'exito' });
       }
-
       resetForm();
       setMostrarFormulario(false);
       setModoEdicion(false);
       setIdEditar(null);
       await fetchLibros();
-
     } catch (error) {
       manejarError(error);
-    } finally {
-      setCargando(false);
-    }
+    } finally { setCargando(false); }
   };
 
   const buscarPorId = async () => {
-    if (!idBusqueda.trim()) {
-      setMensaje({ texto: 'Por favor ingrese un ID válido', tipo: 'advertencia' });
-      return;
-    }
-
+    if (!idBusqueda.trim()) { setMensaje({ texto: 'Por favor ingrese un ID válido', tipo: 'advertencia' }); return; }
     setCargando(true);
     try {
       const response = await axios.get(`${API_BASE}/${idBusqueda}`, getTokenConfig());
       setLibroBuscado(response.data);
       setMensaje({ texto: '', tipo: '' });
     } catch (error) {
-      if (error.response?.status === 404) {
-        setMensaje({ texto: 'Libro no encontrado', tipo: 'error' });
-      } else {
-        manejarError(error);
-      }
+      if (error.response?.status === 404) setMensaje({ texto: 'Libro no encontrado', tipo: 'error' });
+      else manejarError(error);
       setLibroBuscado(null);
-    } finally {
-      setCargando(false);
-    }
+    } finally { setCargando(false); }
   };
 
   const eliminarLibro = async (id) => {
     if (!window.confirm('¿Estás seguro de eliminar este libro?')) return;
-
     setCargando(true);
     try {
       await axios.delete(`${API_BASE}/${id}`, getTokenConfig());
       setMensaje({ texto: 'Libro eliminado correctamente', tipo: 'exito' });
-      if (modoEdicion && id === idEditar) {
-        setModoEdicion(false);
-        setMostrarFormulario(false);
-        resetForm();
-      }
+      if (modoEdicion && id === idEditar) { setModoEdicion(false); setMostrarFormulario(false); resetForm(); }
       await fetchLibros();
-    } catch (error) {
-      manejarError(error);
-    } finally {
-      setCargando(false);
-    }
+    } catch (error) { manejarError(error); } finally { setCargando(false); }
   };
 
-  // =========================
-  // Modal: abrir y cargar autor (opcional, para mostrar nombre)
-  // =========================
+  // Modal compra
   const abrirModalCompra = async (libro) => {
     setLibroSeleccionado(libro);
     setAutorSeleccionado(null);
     setCantCompra(1);
-    setModalAbierto(true); // abrir aunque falle autor
-
-    // Cargar autor SOLO para mostrar nombre; NO es requisito para llamar al backend
+    setModalAbierto(true);
     setCargandoAutor(true);
     try {
       const resp = await axios.get(API_AUTOR, getTokenConfig());
       const autores = Array.isArray(resp.data) ? resp.data : [];
-      const encontrado =
-        autores.find(a =>
-          (a.autorLibroGuid || '').toLowerCase() === String(libro.autorLibro || '').toLowerCase()
-        ) || null;
-      setAutorSeleccionado(encontrado || null);
-    } catch (error) {
-      console.warn('No se pudo cargar autor', error);
-    } finally {
-      setCargandoAutor(false);
-    }
+      const encontrado = autores.find(a => (a.autorLibroGuid || '').toLowerCase() === String(libro.autorLibro || '').toLowerCase()) || null;
+      setAutorSeleccionado(encontrado);
+    } catch (err) {
+      console.warn('No se pudo cargar autor', err);
+    } finally { setCargandoAutor(false); }
   };
 
   const cerrarModal = () => {
@@ -247,30 +220,20 @@ const App = () => {
     setCantCompra(1);
   };
 
-  // =========================
-  // Acciones del modal
-  // =========================
-const postAgregarCarrito = async () => {
-  if (!libroSeleccionado) return false;
-
-  const precioUnitario = Number(libroSeleccionado.precioUnitario ?? 0);
-  const cantidad = Math.max(1, parseInt(cantCompra, 10) || 1);
-  const precioTotal = +(precioUnitario * cantidad).toFixed(2);
-
-  // Usar SIEMPRE el GUID que ya trae el libro (campo autorLibro)
-  const payload = {
-    libreriaMaterialId: String(libroSeleccionado.libreriaMaterialId),
-    cantidad,
-    autorLibroGuid: String(libroSeleccionado.autorLibro), // <-- SOLO GUID
-    precioUnitario,
-    precioTotal,
-    fechaCompra: nowLocalDateTime() // <-- sin 'Z'
+  const postAgregarCarrito = async () => {
+    if (!libroSeleccionado) return false;
+    const cantidad = Math.max(1, parseInt(cantCompra, 10) || 1);
+    const payload = {
+      libreriaMaterialId: String(libroSeleccionado.libreriaMaterialId),
+      cantidad,
+      autorLibroGuid: String(libroSeleccionado.autorLibro),
+      precioUnitario: Number(libroSeleccionado.precioUnitario ?? 0),
+      precioTotal: +(Number(libroSeleccionado.precioUnitario ?? 0) * cantidad).toFixed(2),
+      fechaCompra: nowLocalDateTime()
+    };
+    const res = await axios.post(`${API_CARRITO}/agregar`, payload, getTokenConfig());
+    return res.status >= 200 && res.status < 300;
   };
-
-  console.log('POST /agregar payload:', payload);
-  const res = await axios.post(`${API_CARRITO}/agregar`, payload, getTokenConfig());
-  return res.status >= 200 && res.status < 300;
-};
 
   const manejarAgregarAlCarrito = async () => {
     try {
@@ -280,27 +243,38 @@ const postAgregarCarrito = async () => {
         cerrarModal();
         navigate('/carrito');
       }
-    } catch (error) {
-      manejarError(error);
-    }
+    } catch (err) { manejarError(err); }
   };
 
   const manejarComprarAhora = async () => {
-    try {
-      const ok = await postAgregarCarrito();
-      if (!ok) return;
-      const r = await axios.post(`${API_CARRITO}/comprar`, {}, getTokenConfig());
-      if (r.status >= 200 && r.status < 300) {
-        setMensaje({ texto: '¡Compra realizada con éxito!', tipo: 'exito' });
-        cerrarModal();
-        // navigate('/carrito'); // si quieres ir al carrito vacío después
-      }
-    } catch (error) {
-      manejarError(error);
-    }
+    const ok = await postAgregarCarrito();
+    if (!ok) return;
+    cerrarModal();
+    setModalDatosAbierto(true);
   };
 
-  // Ya no bloqueamos por autorLibroId; sólo evitamos clicks durante carga del autor
+  const confirmarCompra = async () => {
+    const { nombreCompleto, email, direccion, tipoIdentificacion, curp, rfc } = datosCompra;
+    if (!nombreCompleto?.trim()) { setMensaje({ texto: 'El nombre completo es obligatorio.', tipo: 'error' }); return; }
+    if (!email?.trim() || !email.includes('@')) { setMensaje({ texto: 'Email inválido.', tipo: 'error' }); return; }
+    if (!direccion?.trim()) { setMensaje({ texto: 'La dirección es obligatoria.', tipo: 'error' }); return; }
+    if (tipoIdentificacion === 'curp' && !curp?.trim()) { setMensaje({ texto: 'La CURP es obligatoria según el tipo seleccionado.', tipo: 'error' }); return; }
+    if (tipoIdentificacion === 'rfc' && !rfc?.trim()) { setMensaje({ texto: 'El RFC es obligatorio según el tipo seleccionado.', tipo: 'error' }); return; }
+
+    const payload = { nombreCompleto: nombreCompleto.trim(), email: email.trim(), direccion: direccion.trim() };
+    if (tipoIdentificacion === 'curp') payload.curp = curp.trim();
+    else payload.rfc = rfc.trim();
+
+    try {
+      const r = await axios.post(`${API_CARRITO}/comprar`, payload, getTokenConfig());
+      if (r.status >= 200 && r.status < 300) {
+        setMensaje({ texto: '¡Compra realizada con éxito!', tipo: 'exito' });
+        setModalDatosAbierto(false);
+        setDatosCompra({ nombreCompleto: '', email: '', direccion: '', curp: '', rfc: '', tipoIdentificacion: 'curp' });
+      }
+    } catch (err) { manejarError(err); }
+  };
+
   const botonesBloqueados = cargandoAutor || !libroSeleccionado;
 
   return (
@@ -612,9 +586,7 @@ const postAgregarCarrito = async () => {
 
               <div style={{ marginTop: 12 }}>
                 <strong>Total:</strong>{' '}
-                ${(
-                  Number(libroSeleccionado.precioUnitario ?? 0) * Number(cantCompra ?? 1)
-                ).toFixed(2)}
+                ${(Number(libroSeleccionado.precioUnitario ?? 0) * Number(cantCompra ?? 1)).toFixed(2)}
               </div>
             </div>
 
@@ -642,6 +614,110 @@ const postAgregarCarrito = async () => {
           </div>
         </div>
       )}
+
+      {/* =========================
+          Modal de Datos del Cliente
+      ========================== */}
+      {modalDatosAbierto && (
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <div style={styles.modalHeader}>
+              <h3>Datos del Cliente</h3>
+              <button type="button" style={styles.closeBtn} onClick={() => setModalDatosAbierto(false)}>✕</button>
+            </div>
+
+            <div style={styles.modalBody}>
+              <div className="form-group">
+                <label>Nombre Completo</label>
+                <input
+                  type="text"
+                  name="nombreCompleto"
+                  value={datosCompra.nombreCompleto}
+                  onChange={handleDatosChange}
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={datosCompra.email}
+                  onChange={handleDatosChange}
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Dirección</label>
+                <input
+                  type="text"
+                  name="direccion"
+                  value={datosCompra.direccion}
+                  onChange={handleDatosChange}
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Tipo de Identificación</label>
+                <select
+                  name="tipoIdentificacion"
+                  value={datosCompra.tipoIdentificacion}
+                  onChange={handleDatosChange}
+                  className="form-input"
+                >
+                  <option value="curp">CURP</option>
+                  <option value="rfc">RFC</option>
+                </select>
+              </div>
+
+              {/* Render condicional: SOLO se muestra el campo seleccionado */}
+              {datosCompra.tipoIdentificacion === 'curp' && (
+                <div className="form-group">
+                  <label>CURP</label>
+                  <input
+                    type="text"
+                    name="curp"
+                    value={datosCompra.curp}
+                    onChange={handleDatosChange}
+                    className="form-input"
+                    placeholder="Ej. ABCD001122HDFLLL09"
+                    required
+                  />
+                </div>
+              )}
+
+              {datosCompra.tipoIdentificacion === 'rfc' && (
+                <div className="form-group">
+                  <label>RFC</label>
+                  <input
+                    type="text"
+                    name="rfc"
+                    value={datosCompra.rfc}
+                    onChange={handleDatosChange}
+                    className="form-input"
+                    placeholder="Ej. ABCD001122XYZ"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button type="button" className="btn btn-secondary" onClick={() => setModalDatosAbierto(false)}>Cancelar</button>
+              <button type="button" className="btn btn-primary" onClick={confirmarCompra}>
+                Confirmar Compra
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

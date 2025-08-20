@@ -4,11 +4,9 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import '../Carrito.css';
 
-// Ajusta el endpoint de carrito a tu entorno:
 const API_CARRITO = process.env.REACT_APP_CARRITO_API ?? 'https://localhost:7277/api/Carrito';
 const API_LIBROS  = 'https://microserviciolibros.somee.com/api/LibroMaterial';
 
-// Helper headers (token + JSON)
 const useTokenConfig = () => {
   return useMemo(() => {
     const token = localStorage.getItem('token');
@@ -21,13 +19,34 @@ const useTokenConfig = () => {
   }, []);
 };
 
+// Helpers
+const norm = (s) => String(s ?? '').trim().toLowerCase();
+const getLibroId = (it) => {
+  const raw = it?.libreriaMaterialId ?? it?.libroId ?? it?.idLibro ?? it?.id ?? null;
+  return raw != null ? String(raw) : '';
+};
+
+// Validaciones
+const validarEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).toLowerCase());
+const validarRFC = (rfc) => /^([A-ZÑ&]{3,4}\d{6}[A-Z\d]{3})$/i.test(rfc.trim());
+const validarCURP = (curp) => /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]{2}$/i.test(curp.trim());
+
 const CarritoView = () => {
-  // /orden devuelve { total, items }
   const [orden, setOrden] = useState({ total: 0, items: [] });
   const [loading, setLoading] = useState(false);
   const [comprando, setComprando] = useState(false);
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
-  const [titulosCache, setTitulosCache] = useState({}); // { libreriaMaterialId: titulo }
+  const [titulosCache, setTitulosCache] = useState({});
+  const [mostrarDetalleCompra, setMostrarDetalleCompra] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [datosComprador, setDatosComprador] = useState({
+    nombreCompleto: '',
+    email: '',
+    direccion: '',
+    rfc: '',
+    curp: '',
+    tipoIdentificacion: ''
+  });
 
   const navigate = useNavigate();
   const tokenConfig = useTokenConfig();
@@ -49,25 +68,15 @@ const CarritoView = () => {
     setMensaje({ texto: detalle, tipo: 'error' });
   }, [navigate]);
 
-  // ---------------------------
-  // Cargar carrito
-  // ---------------------------
   const fetchOrden = useCallback(async () => {
     setLoading(true);
     try {
       const res = await axios.get(`${API_CARRITO}/orden`, tokenConfig);
-      const data = res?.data && typeof res.data === 'object'
-        ? res.data
-        : { total: 0, items: [] };
-
-      setOrden({
-        total: Number(data.total || 0),
-        items: Array.isArray(data.items) ? data.items : []
-      });
+      const data = res?.data && typeof res.data === 'object' ? res.data : { total: 0, items: [] };
+      const items = Array.isArray(data.items) ? data.items : [];
+      setOrden({ total: Number(data.total || 0), items });
       setMensaje({ texto: '', tipo: '' });
-
-      // Enriquecer títulos (solo UI)
-      enrichTitulos(Array.isArray(data.items) ? data.items : []);
+      await enrichTitulos(items);
     } catch (error) {
       manejarError(error);
     } finally {
@@ -75,69 +84,31 @@ const CarritoView = () => {
     }
   }, [tokenConfig, manejarError]);
 
-  useEffect(() => {
-    fetchOrden();
-  }, [fetchOrden]);
+  useEffect(() => { fetchOrden(); }, [fetchOrden]);
 
-  // ---------------------------
-  // Enriquecer títulos de libros (UI)
-  // ---------------------------
-  const enrichTitulos = async (items) => {
-    const toFetch = items
-      .map(i => i.libreriaMaterialId)
-      .filter(id => id && !titulosCache[id]);
+  const enrichTitulos = useCallback(async (items) => {
+    const pendientes = Array.from(new Set((items || []).map(getLibroId).filter(id => id && !titulosCache[id])));
+    if (!pendientes.length) return;
+    const nuevos = {};
+    await Promise.all(pendientes.map(async (id) => {
+      try {
+        const r = await axios.get(`${API_LIBROS}/${id}`, tokenConfig);
+        if (r?.data?.titulo) nuevos[id] = r.data.titulo;
+      } catch {}
+    }));
+    if (Object.keys(nuevos).length) setTitulosCache(prev => ({ ...prev, ...nuevos }));
+  }, [titulosCache, tokenConfig]);
 
-    if (toFetch.length === 0) return;
+  const tituloLibroByItem = (it) => titulosCache[getLibroId(it)] || getLibroId(it) || '—';
 
-    try {
-      const newCache = {};
-      await Promise.all(
-        toFetch.map(async (id) => {
-          try {
-            const r = await axios.get(`${API_LIBROS}/${id}`, tokenConfig);
-            const titulo = r?.data?.titulo || '';
-            if (titulo) newCache[id] = titulo;
-          } catch {
-            // ignorar error puntual
-          }
-        })
-      );
-      if (Object.keys(newCache).length > 0) {
-        setTitulosCache(prev => ({ ...prev, ...newCache }));
-      }
-    } catch {
-      // ignorar
-    }
-  };
-
-  const tituloLibro = (id) => titulosCache[id] || id;
-
-  // ---------------------------
-  // Helper: obtener autor GUID desde Libros si el item no lo trae
-  // ---------------------------
-  const obtenerAutorGuid = async (libreriaMaterialId) => {
-    try {
-      const r = await axios.get(`${API_LIBROS}/${libreriaMaterialId}`, tokenConfig);
-      // En tu API de Libros, el GUID del autor viene en el campo 'autorLibro'
-      return r?.data?.autorLibro || null;
-    } catch {
-      return null;
-    }
-  };
-
-  // ---------------------------
-  // Totales (si backend ya da total, se usa; si no, calculamos)
-  // ---------------------------
   const totalGeneral = useMemo(() => {
     const totalBackend = Number(orden.total || 0);
     if (totalBackend > 0) return totalBackend;
     return (orden.items || []).reduce((acc, it) => acc + Number(it.precioTotal || 0), 0);
   }, [orden]);
 
-  // ---------------------------
-  // Eliminar un ítem
-  // ---------------------------
-  const eliminarItem = async (libreriaMaterialId) => {
+  const eliminarItem = async (libreriaMaterialIdRaw) => {
+    const libreriaMaterialId = String(libreriaMaterialIdRaw);
     if (!window.confirm('¿Eliminar este artículo del carrito?')) return;
     try {
       await axios.delete(`${API_CARRITO}/eliminar/${libreriaMaterialId}`, tokenConfig);
@@ -148,74 +119,36 @@ const CarritoView = () => {
     }
   };
 
-  // ---------------------------
-  // Vaciar carrito (eliminar todos one-by-one)
-  // ---------------------------
-  const vaciarCarrito = async () => {
-    if (!orden.items.length) return;
-    if (!window.confirm('¿Vaciar el carrito completo?')) return;
-    try {
-      for (const it of orden.items) {
-        await axios.delete(`${API_CARRITO}/eliminar/${it.libreriaMaterialId}`, tokenConfig);
-      }
-      setMensaje({ texto: 'Carrito vacío.', tipo: 'exito' });
-      await fetchOrden();
-    } catch (error) {
-      manejarError(error);
-    }
-  };
+  const comprarAhora = () => setMostrarDetalleCompra(true);
+  const abrirFormulario = () => setMostrarFormulario(true);
 
-  // ---------------------------
-  // Cambiar cantidad usando POST /agregar (upsert)
-  //   -> Enviar SIEMPRE autorLibroGuid (no autorLibroId)
-  //   -> fechaCompra sin 'Z' (yyyy-MM-ddTHH:mm:ss)
-  // ---------------------------
-  const setCantidad = async (item, nuevaCantidad) => {
-    const cantidad = Math.max(1, Number(nuevaCantidad || 1));
-    try {
-      const precioUnitario = Number(item.precioUnitario ?? 0);
+  const confirmarCompra = async () => {
+    const { nombreCompleto, email, direccion, rfc, curp, tipoIdentificacion } = datosComprador;
 
-      // 1) intentar usar el GUID si viniera en el item (por si actualizas backend para incluirlo)
-      let autorGuid = item.autorLibroGuid;
+    if (!nombreCompleto.trim()) { setMensaje({ texto: 'El nombre completo es obligatorio.', tipo: 'error' }); return; }
+    if (!email.trim() || !validarEmail(email)) { setMensaje({ texto: 'El email no es válido.', tipo: 'error' }); return; }
+    if (!direccion.trim()) { setMensaje({ texto: 'La dirección es obligatoria.', tipo: 'error' }); return; }
+    if (!tipoIdentificacion) { setMensaje({ texto: 'Selecciona un tipo de identificación.', tipo: 'error' }); return; }
+    if (tipoIdentificacion === 'rfc' && !validarRFC(rfc)) { setMensaje({ texto: 'El RFC no tiene un formato válido.', tipo: 'error' }); return; }
+    if (tipoIdentificacion === 'curp' && !validarCURP(curp)) { setMensaje({ texto: 'La CURP no tiene un formato válido.', tipo: 'error' }); return; }
 
-      // 2) si no está en el item, lo traemos desde el microservicio de libros
-      if (!autorGuid) {
-        autorGuid = await obtenerAutorGuid(item.libreriaMaterialId);
-      }
-
-      if (!autorGuid) {
-        throw new Error('No se pudo obtener autorLibroGuid para este artículo.');
-      }
-
-      const payload = {
-        libreriaMaterialId: item.libreriaMaterialId,
-        cantidad,
-        autorLibroGuid: String(autorGuid),           // <-- SOLO GUID
-        precioUnitario,
-        precioTotal: +(precioUnitario * cantidad).toFixed(2),
-        fechaCompra: new Date().toISOString().slice(0, 19) // yyyy-MM-ddTHH:mm:ss
-      };
-
-      await axios.post(`${API_CARRITO}/agregar`, payload, tokenConfig);
-      await fetchOrden();
-    } catch (error) {
-      manejarError(error);
-    }
-  };
-
-  const incrementar = (item) => setCantidad(item, (Number(item.cantidad || 1) + 1));
-  const decrementar = (item) => setCantidad(item, (Number(item.cantidad || 1) - 1));
-
-  // ---------------------------
-  // Comprar todo
-  // ---------------------------
-  const comprarTodo = async () => {
-    if (!orden.items.length) return;
     setComprando(true);
     try {
-      await axios.post(`${API_CARRITO}/comprar`, {}, tokenConfig);
+      const payload = {
+        nombreCompleto: nombreCompleto.trim(),
+        email: email.trim(),
+        direccion: direccion.trim(),
+        rfc:  tipoIdentificacion === 'rfc'  ? rfc.trim()  : '',
+        curp: tipoIdentificacion === 'curp' ? curp.trim() : '',
+        items: orden.items,
+        total: totalGeneral
+      };
+      await axios.post(`${API_CARRITO}/comprar`, payload, tokenConfig);
       setMensaje({ texto: '¡Compra realizada con éxito!', tipo: 'exito' });
-      await fetchOrden();
+      setMostrarFormulario(false);
+      setMostrarDetalleCompra(false);
+      setDatosComprador({ nombreCompleto: '', email: '', direccion: '', rfc: '', curp: '', tipoIdentificacion: '' });
+      setOrden({ total: 0, items: [] });
     } catch (error) {
       manejarError(error);
     } finally {
@@ -231,9 +164,6 @@ const CarritoView = () => {
           <button className="btn btn-secondary" onClick={fetchOrden} disabled={loading}>
             {loading ? 'Actualizando...' : 'Actualizar'}
           </button>
-          <button className="btn btn-danger" onClick={vaciarCarrito} disabled={loading || !orden.items.length}>
-            Vaciar carrito
-          </button>
         </div>
       </header>
 
@@ -247,88 +177,128 @@ const CarritoView = () => {
       ) : !orden.items.length ? (
         <div className="empty-state">
           <p>Tu carrito está vacío.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/libros')}>
-            Ver libros
-          </button>
+          <button className="btn btn-primary" onClick={() => navigate('/libros')}>Ver libros</button>
         </div>
       ) : (
         <>
-          <div className="tabla-wrapper">
-            <table className="tabla-carrito">
-              <thead>
-                <tr>
-                  <th>Libro</th>
-                  <th>Autor</th>
-                  <th>Fecha</th>
-                  <th>Cantidad</th>
-                  <th>Precio Unit.</th>
-                  <th>Subtotal</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {orden.items.map((item) => (
-                  <tr key={item.libreriaMaterialId}>
-                    <td>
-                      <div className="celda-libro">
-                        <div className="titulo">{tituloLibro(item.libreriaMaterialId)}</div>
-                        <div className="sub-id">#{item.libreriaMaterialId}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="celda-autor">
-                        {/* si backend luego añade autorLibroId/Guid al /orden, los mostramos */}
-                        {item.autorLibroId ? `ID: ${item.autorLibroId}` : null}
-                        <div className="sub-guid">{item.autorLibroGuid || '-'}</div>
-                      </div>
-                    </td>
-                    <td>{item.fechaCompra ? new Date(item.fechaCompra).toLocaleDateString() : '-'}</td>
-                    <td>
-                      <div className="qty-control">
-                        <button className="btn btn-sm" onClick={() => decrementar(item)}>-</button>
-                        <input
-                          className="qty-input"
-                          type="number"
-                          min={1}
-                          value={Number(item.cantidad ?? 1)}
-                          onChange={(e) => setCantidad(item, e.target.value)}
-                        />
-                        <button className="btn btn-sm" onClick={() => incrementar(item)}>+</button>
-                      </div>
-                    </td>
-                    <td>${Number(item.precioUnitario ?? 0).toFixed(2)}</td>
-                    <td><strong>${Number(item.precioTotal ?? 0).toFixed(2)}</strong></td>
-                    <td>
-                      <button className="btn btn-outline btn-sm" onClick={() => eliminarItem(item.libreriaMaterialId)}>
-                        Eliminar
-                      </button>
-                    </td>
+          {!mostrarDetalleCompra && (
+            <div className="tabla-wrapper">
+              <table className="tabla-carrito">
+                <thead>
+                  <tr>
+                    <th>Libro</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unit.</th>
+                    <th>Subtotal</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'right' }}>
-                    <strong>Total:</strong>
-                  </td>
-                  <td colSpan={2}>
-                    <strong>${totalGeneral.toFixed(2)}</strong>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {orden.items.map((item, idx) => (
+                    <tr key={`${getLibroId(item)}-${idx}`}>
+                      <td>{tituloLibroByItem(item)}</td>
+                      <td>{item.cantidad}</td>
+                      <td>{Number(item.precioUnitario).toFixed(2)}</td>
+                      <td>{Number(item.precioTotal).toFixed(2)}</td>
+                      <td>
+                        <button className="btn btn-outline btn-sm" onClick={() => eliminarItem(getLibroId(item))}>Eliminar</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: 'right' }}>Total:</td>
+                    <td colSpan={2}><strong>{totalGeneral.toFixed(2)}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+              <div className="carrito-actions-bottom">
+                <button className="btn" onClick={() => navigate('/libros')}>Seguir comprando</button>
+                <button className="btn btn-primary" onClick={comprarAhora}>Comprar ahora</button>
+              </div>
+            </div>
+          )}
 
-          <div className="carrito-actions-bottom">
-            <button className="btn" onClick={() => navigate('/libros')}>Seguir comprando</button>
-            <button
-              className="btn btn-primary"
-              onClick={comprarTodo}
-              disabled={comprando || !orden.items.length}
-            >
-              {comprando ? 'Procesando...' : 'Comprar ahora'}
-            </button>
-          </div>
+          {mostrarDetalleCompra && !mostrarFormulario && (
+            <div className="detalle-compra">
+              <h3>Detalle de tu compra</h3>
+              <table className="tabla-carrito">
+                <thead>
+                  <tr>
+                    <th>Libro</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unit.</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orden.items.map((item, idx) => (
+                    <tr key={`${getLibroId(item)}-${idx}`}>
+                      <td>{tituloLibroByItem(item)}</td>
+                      <td>{item.cantidad}</td>
+                      <td>{Number(item.precioUnitario).toFixed(2)}</td>
+                      <td>{Number(item.precioTotal).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={2} style={{ textAlign: 'right' }}>Total:</td>
+                    <td colSpan={2}><strong>{totalGeneral.toFixed(2)}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+              <div style={{ marginTop: 16 }}>
+                <button className="btn btn-outline" onClick={() => setMostrarDetalleCompra(false)}>Cancelar</button>
+                <button className="btn btn-success" onClick={abrirFormulario}>Confirmar compra</button>
+              </div>
+            </div>
+          )}
+
+          {mostrarFormulario && (
+            <div className="formulario-compra" style={{ border: '1px solid #ccc', padding: 16, borderRadius: 8, maxWidth: 400 }}>
+              <h3>Datos del comprador</h3>
+              <form onSubmit={e => { e.preventDefault(); confirmarCompra(); }}>
+                <div style={{ marginBottom: 8 }}>
+                  <label>Nombre completo*</label>
+                  <input type="text" value={datosComprador.nombreCompleto} onChange={e => setDatosComprador({ ...datosComprador, nombreCompleto: e.target.value })} required />
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <label>Email*</label>
+                  <input type="email" value={datosComprador.email} onChange={e => setDatosComprador({ ...datosComprador, email: e.target.value })} required />
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <label>Dirección*</label>
+                  <input type="text" value={datosComprador.direccion} onChange={e => setDatosComprador({ ...datosComprador, direccion: e.target.value })} required />
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <label>Tipo de identificación*</label>
+                  <select value={datosComprador.tipoIdentificacion} onChange={e => setDatosComprador({ ...datosComprador, tipoIdentificacion: e.target.value, rfc: '', curp: '' })} required>
+                    <option value="">Selecciona...</option>
+                    <option value="rfc">RFC</option>
+                    <option value="curp">CURP</option>
+                  </select>
+                </div>
+                {datosComprador.tipoIdentificacion === 'rfc' && (
+                  <div style={{ marginBottom: 8 }}>
+                    <label>RFC*</label>
+                    <input type="text" value={datosComprador.rfc} onChange={e => setDatosComprador({ ...datosComprador, rfc: e.target.value })} required />
+                  </div>
+                )}
+                {datosComprador.tipoIdentificacion === 'curp' && (
+                  <div style={{ marginBottom: 8 }}>
+                    <label>CURP*</label>
+                    <input type="text" value={datosComprador.curp} onChange={e => setDatosComprador({ ...datosComprador, curp: e.target.value })} required />
+                  </div>
+                )}
+                <div style={{ marginTop: 16 }}>
+                  <button className="btn btn-outline" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
+                  <button className="btn btn-success" type="submit" disabled={comprando}>{comprando ? 'Procesando...' : 'Finalizar compra'}</button>
+                </div>
+              </form>
+            </div>
+          )}
         </>
       )}
     </div>
